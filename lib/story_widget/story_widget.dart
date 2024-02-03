@@ -46,10 +46,10 @@ class StoryWidget<A, B> extends StatefulWidget {
   final double paddingSlide;
 
   /// the custom view in the bottom of slider
-  final Widget? bottomSlideView;
+  final Widget Function(int pageIndex, {A? data})? bottomSlideView;
 
   /// the custom view in the top of slider
-  final Widget? topSlideView;
+  final Widget Function(int pageIndex, {A? data})? topSlideView;
 
   /// the custom view in the bottom of video
   final Widget? bottomView;
@@ -146,11 +146,11 @@ class _StoryWidgetState extends State<StoryWidget> {
     if (stories.length == index) {
       final newPageIndex = _currentPageIndex.value + 1;
       if (newPageIndex >= listStories.length) {
-        print('last');
         widget.onFinishStorySlide?.call();
       } else {
         _currentPageIndex.value = newPageIndex;
         await animatedToPage(newPageIndex);
+        onChangeStoryIndex(0);
       }
 
       return;
@@ -163,6 +163,8 @@ class _StoryWidgetState extends State<StoryWidget> {
       final newPageIndex = _currentPageIndex.value - 1;
       if (newPageIndex >= 0) {
         await animatedToPage(newPageIndex);
+        onChangeStoryIndex(0);
+        return;
       } else {
         return;
       }
@@ -256,19 +258,17 @@ class _StoryWidgetState extends State<StoryWidget> {
       onLongPress: _onLongPressStart,
       onLongPressEnd: (details) => _onLongPressEnd(),
       onLongPressCancel: _onLongPressEnd,
-      // onHorizontalDragStart: (details) =>
-      //     dev.log('onHorizontalDragStart ${details.toString()}'),
-      onHorizontalDragUpdate: (details) {
-        // pageController.animateTo(currentPageValue + details.delta.dx / 100,
-        //     duration: const Duration(milliseconds: 100), curve: Curves.linear);
-        // dev.log('onHorizontalDragUpdate $details');
-      },
       behavior: HitTestBehavior.deferToChild,
       child: Container(
         color: widget.backgroundColor ?? Colors.black,
         child: Stack(
           children: [
-            Positioned.fill(child: _buildStoryImage()),
+            SizedBox.expand(child: _buildStoryImage()),
+            Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: widget.bottomView ?? const SizedBox()),
             ValueListenableBuilder(
               valueListenable: _isShowOtherView,
               builder: (context, isShow, child) => AnimatedCrossFade(
@@ -282,11 +282,6 @@ class _StoryWidgetState extends State<StoryWidget> {
                     : CrossFadeState.showSecond,
               ),
             ),
-            Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: widget.bottomView ?? const SizedBox()),
           ],
         ),
       ),
@@ -328,53 +323,58 @@ class _StoryWidgetState extends State<StoryWidget> {
   }
 
   Widget _buildSlider() {
-    return Padding(
-      padding: widget.topSliderPadding ??
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Column(children: [
-        widget.topSlideView ?? const SizedBox(),
-        Row(
-            children: List.generate(
-                stories.length,
-                (index) => Expanded(
-                      child: LayoutBuilder(
-                          builder: (context, constraint) =>
-                              ValueListenableBuilder(
-                                valueListenable: _currentStoryIndex,
-                                builder: (context, page, child) {
-                                  if (page == index) {
-                                    return Stack(children: [
-                                      _buildSlideView(index,
-                                          backgroundColor: unactive),
-                                      ValueListenableBuilder(
-                                          valueListenable: _currentSlideValue,
-                                          builder: (context, value, child) {
-                                            final currentWidth =
-                                                constraint.maxWidth < 0
-                                                    ? 0.0
-                                                    : (value *
-                                                            constraint
-                                                                .maxWidth) -
-                                                        widget.paddingSlide;
-                                            return _buildSlideView(index,
-                                                backgroundColor: active,
-                                                width: currentWidth > 0
-                                                    ? currentWidth
-                                                    : 0);
-                                          }),
-                                    ]);
-                                  } else if (page > index) {
-                                    return _buildSlideView(index,
-                                        backgroundColor: active);
-                                  } else {
-                                    return _buildSlideView(index,
-                                        backgroundColor: unactive);
-                                  }
-                                },
-                              )),
-                    ))),
-        widget.bottomSlideView ?? const SizedBox(),
-      ]),
+    return ValueListenableBuilder(
+      valueListenable: _currentPageIndex,
+      builder: (context, page, child) => Padding(
+        padding: widget.topSliderPadding ??
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(children: [
+          widget.topSlideView?.call(page, data: listStories[page].data) ??
+              const SizedBox(),
+          Row(
+              children: List.generate(
+                  stories.length,
+                  (index) => Expanded(
+                        child: LayoutBuilder(
+                            builder: (context, constraint) =>
+                                ValueListenableBuilder(
+                                  valueListenable: _currentStoryIndex,
+                                  builder: (context, page, child) {
+                                    if (page == index) {
+                                      return Stack(children: [
+                                        _buildSlideView(index,
+                                            backgroundColor: unactive),
+                                        ValueListenableBuilder(
+                                            valueListenable: _currentSlideValue,
+                                            builder: (context, value, child) {
+                                              final currentWidth =
+                                                  constraint.maxWidth < 0
+                                                      ? 0.0
+                                                      : (value *
+                                                              constraint
+                                                                  .maxWidth) -
+                                                          widget.paddingSlide;
+                                              return _buildSlideView(index,
+                                                  backgroundColor: active,
+                                                  width: currentWidth > 0
+                                                      ? currentWidth
+                                                      : 0);
+                                            }),
+                                      ]);
+                                    } else if (page > index) {
+                                      return _buildSlideView(index,
+                                          backgroundColor: active);
+                                    } else {
+                                      return _buildSlideView(index,
+                                          backgroundColor: unactive);
+                                    }
+                                  },
+                                )),
+                      ))),
+          widget.bottomSlideView?.call(page, data: listStories[page].data) ??
+              const SizedBox(),
+        ]),
+      ),
     );
   }
 
@@ -466,7 +466,6 @@ class _StoryWidgetState extends State<StoryWidget> {
             height: double.infinity,
           ),
         )),
-        // const SizedBox(width: 30),
         Expanded(
             child: GestureDetector(
           onTap: () => onChangeStoryIndex(_currentStoryIndex.value + 1),

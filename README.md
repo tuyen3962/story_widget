@@ -1,6 +1,23 @@
+## Story Widget
+
+Implement the story like Facebook, Instagram
+
+🗾 Demo Image:
+
+<p float="left">
+  <img src="https://drive.google.com/file/d/1RTJO7EzT3kp-qQFGxovIWAGWlP55TaMU/view?usp=sharing" width=200 />
+</p>
+
+🍟 Demo Video:
+
+https://drive.google.com/file/d/19SzAf48VJcH03xQI781K1OZvd7w8uo63/view?usp=sharing
+
+
 ## Features
 
 Create a story widget for listing the list of images, and videos for users to view like Instagram and Facebook story
+
+
 
 ## Usage
 
