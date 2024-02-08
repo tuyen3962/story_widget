@@ -4,7 +4,7 @@ Implement the story like Facebook, Instagram
 
 🗾 Demo Image:
 
-[!Demo image](asset/demo_image.png)
+(asset/demo_image.png)
 
 🍟 Demo Video:
 
