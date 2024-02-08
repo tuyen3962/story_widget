@@ -11,6 +11,8 @@ const IMAGE_DURATION = 5000;
 
 const _DURATION_TIME = 50;
 
+const maxOpacity = 0.8;
+
 class StoryWidget<A, B> extends StatefulWidget {
   const StoryWidget({
     this.listStories = const [],
@@ -408,8 +410,7 @@ class _StoryWidgetState extends State<StoryWidget> {
         itemBuilder: (context, index) {
           final isLeaving = (index - currentPageValue) <= 0;
           final t = (index - currentPageValue);
-          final rotationY = lerpDouble(0, 30, t as double)!;
-          final maxOpacity = 0.8;
+          final rotationY = lerpDouble(0, 30, t)!;
           final num opacity =
               lerpDouble(0, maxOpacity, t.abs())!.clamp(0.0, maxOpacity);
           final isPaging = opacity != maxOpacity;
