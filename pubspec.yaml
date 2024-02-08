@@ -1,6 +1,6 @@
 name: story_widget
-description: A story widget for socail app
-version: 0.0.1
+description: A story widget for socail app in which user can add both the video and image
+version: 0.0.1+3
 author: Flutter is my favorite framework (Tuyen) <tuyen3962@gmail.com>
 homepage: https://github.com/tuyen3962/story_widget
 

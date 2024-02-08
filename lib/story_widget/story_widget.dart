@@ -11,6 +11,8 @@ const IMAGE_DURATION = 5000;
 
 const _DURATION_TIME = 50;
 
+const maxOpacity = 0.8;
+
 class StoryWidget<A, B> extends StatefulWidget {
   const StoryWidget({
     this.listStories = const [],
@@ -46,10 +48,10 @@ class StoryWidget<A, B> extends StatefulWidget {
   final double paddingSlide;
 
   /// the custom view in the bottom of slider
-  final Widget? bottomSlideView;
+  final Widget Function(int pageIndex, {A? data})? bottomSlideView;
 
   /// the custom view in the top of slider
-  final Widget? topSlideView;
+  final Widget Function(int pageIndex, {A? data})? topSlideView;
 
   /// the custom view in the bottom of video
   final Widget? bottomView;
@@ -101,7 +103,7 @@ class _StoryWidgetState extends State<StoryWidget> {
 
   late Timer? timer;
 
-  Timer? _longPressTimer = null;
+  Timer? _longPressTimer;
 
   int get desTimer => widget.slideImageDuration ?? IMAGE_DURATION;
 
@@ -112,7 +114,7 @@ class _StoryWidgetState extends State<StoryWidget> {
 
   List<StoryModel> get stories => listStories[_currentPageIndex.value].stories;
 
-  var currentPageValue;
+  late double currentPageValue = pageController.initialPage.toDouble();
 
   @override
   void dispose() {
@@ -133,24 +135,24 @@ class _StoryWidgetState extends State<StoryWidget> {
   @override
   void initState() {
     super.initState();
-    currentPageValue = pageController.initialPage.toDouble();
     listStories = widget.listStories;
 
     pageController.addListener(() => setState(() {
-          currentPageValue = pageController.page;
+          currentPageValue = pageController.page ?? 0;
         }));
     startCountTimer();
   }
 
   void onChangeStoryIndex(int index) async {
+    if (!mounted) return;
     if (stories.length == index) {
       final newPageIndex = _currentPageIndex.value + 1;
       if (newPageIndex >= listStories.length) {
-        print('last');
         widget.onFinishStorySlide?.call();
       } else {
         _currentPageIndex.value = newPageIndex;
         await animatedToPage(newPageIndex);
+        onChangeStoryIndex(0);
       }
 
       return;
@@ -163,6 +165,8 @@ class _StoryWidgetState extends State<StoryWidget> {
       final newPageIndex = _currentPageIndex.value - 1;
       if (newPageIndex >= 0) {
         await animatedToPage(newPageIndex);
+        onChangeStoryIndex(0);
+        return;
       } else {
         return;
       }
@@ -210,8 +214,8 @@ class _StoryWidgetState extends State<StoryWidget> {
   }
 
   void startCountTimer() {
-    timer =
-        Timer.periodic(Duration(milliseconds: _DURATION_TIME), (timing) async {
+    timer = Timer.periodic(const Duration(milliseconds: _DURATION_TIME),
+        (timing) async {
       final story = stories[_currentStoryIndex.value];
       if (story.storyType == StoryImageType.Image) {
         final currentVal =
@@ -256,19 +260,17 @@ class _StoryWidgetState extends State<StoryWidget> {
       onLongPress: _onLongPressStart,
       onLongPressEnd: (details) => _onLongPressEnd(),
       onLongPressCancel: _onLongPressEnd,
-      // onHorizontalDragStart: (details) =>
-      //     dev.log('onHorizontalDragStart ${details.toString()}'),
-      onHorizontalDragUpdate: (details) {
-        // pageController.animateTo(currentPageValue + details.delta.dx / 100,
-        //     duration: const Duration(milliseconds: 100), curve: Curves.linear);
-        // dev.log('onHorizontalDragUpdate $details');
-      },
       behavior: HitTestBehavior.deferToChild,
       child: Container(
         color: widget.backgroundColor ?? Colors.black,
         child: Stack(
           children: [
-            Positioned.fill(child: _buildStoryImage()),
+            SizedBox.expand(child: _buildStoryImage()),
+            Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: widget.bottomView ?? const SizedBox()),
             ValueListenableBuilder(
               valueListenable: _isShowOtherView,
               builder: (context, isShow, child) => AnimatedCrossFade(
@@ -282,11 +284,6 @@ class _StoryWidgetState extends State<StoryWidget> {
                     : CrossFadeState.showSecond,
               ),
             ),
-            Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: widget.bottomView ?? const SizedBox()),
           ],
         ),
       ),
@@ -294,14 +291,14 @@ class _StoryWidgetState extends State<StoryWidget> {
   }
 
   void _onLongPressStart() {
-    if (!widget.isStopLongPress) return;
+    if (!widget.isStopLongPress || !mounted) return;
 
     _longPressTimer = Timer(const Duration(milliseconds: 300), () {
       if (widget.isHideWhenStop) {
         _isShowOtherView.value = false;
       }
       final story = stories[_currentStoryIndex.value];
-      if (story.storyType == StoryImageType.Video) {
+      if (story.storyType == StoryImageType.Video && mounted) {
         story.videoPlayer?.pause();
       }
       timer?.cancel();
@@ -312,6 +309,8 @@ class _StoryWidgetState extends State<StoryWidget> {
   }
 
   void _onLongPressEnd() {
+    if (!mounted) return;
+
     _longPressTimer?.cancel();
     _longPressTimer = null;
 
@@ -328,53 +327,58 @@ class _StoryWidgetState extends State<StoryWidget> {
   }
 
   Widget _buildSlider() {
-    return Padding(
-      padding: widget.topSliderPadding ??
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Column(children: [
-        widget.topSlideView ?? const SizedBox(),
-        Row(
-            children: List.generate(
-                stories.length,
-                (index) => Expanded(
-                      child: LayoutBuilder(
-                          builder: (context, constraint) =>
-                              ValueListenableBuilder(
-                                valueListenable: _currentStoryIndex,
-                                builder: (context, page, child) {
-                                  if (page == index) {
-                                    return Stack(children: [
-                                      _buildSlideView(index,
-                                          backgroundColor: unactive),
-                                      ValueListenableBuilder(
-                                          valueListenable: _currentSlideValue,
-                                          builder: (context, value, child) {
-                                            final currentWidth =
-                                                constraint.maxWidth < 0
-                                                    ? 0.0
-                                                    : (value *
-                                                            constraint
-                                                                .maxWidth) -
-                                                        widget.paddingSlide;
-                                            return _buildSlideView(index,
-                                                backgroundColor: active,
-                                                width: currentWidth > 0
-                                                    ? currentWidth
-                                                    : 0);
-                                          }),
-                                    ]);
-                                  } else if (page > index) {
-                                    return _buildSlideView(index,
-                                        backgroundColor: active);
-                                  } else {
-                                    return _buildSlideView(index,
-                                        backgroundColor: unactive);
-                                  }
-                                },
-                              )),
-                    ))),
-        widget.bottomSlideView ?? const SizedBox(),
-      ]),
+    return ValueListenableBuilder(
+      valueListenable: _currentPageIndex,
+      builder: (context, page, child) => Padding(
+        padding: widget.topSliderPadding ??
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(children: [
+          widget.topSlideView?.call(page, data: listStories[page].data) ??
+              const SizedBox(),
+          Row(
+              children: List.generate(
+                  stories.length,
+                  (index) => Expanded(
+                        child: LayoutBuilder(
+                            builder: (context, constraint) =>
+                                ValueListenableBuilder(
+                                  valueListenable: _currentStoryIndex,
+                                  builder: (context, page, child) {
+                                    if (page == index) {
+                                      return Stack(children: [
+                                        _buildSlideView(index,
+                                            backgroundColor: unactive),
+                                        ValueListenableBuilder(
+                                            valueListenable: _currentSlideValue,
+                                            builder: (context, value, child) {
+                                              final currentWidth =
+                                                  constraint.maxWidth < 0
+                                                      ? 0.0
+                                                      : (value *
+                                                              constraint
+                                                                  .maxWidth) -
+                                                          widget.paddingSlide;
+                                              return _buildSlideView(index,
+                                                  backgroundColor: active,
+                                                  width: currentWidth > 0
+                                                      ? currentWidth
+                                                      : 0);
+                                            }),
+                                      ]);
+                                    } else if (page > index) {
+                                      return _buildSlideView(index,
+                                          backgroundColor: active);
+                                    } else {
+                                      return _buildSlideView(index,
+                                          backgroundColor: unactive);
+                                    }
+                                  },
+                                )),
+                      ))),
+          widget.bottomSlideView?.call(page, data: listStories[page].data) ??
+              const SizedBox(),
+        ]),
+      ),
     );
   }
 
@@ -406,8 +410,7 @@ class _StoryWidgetState extends State<StoryWidget> {
         itemBuilder: (context, index) {
           final isLeaving = (index - currentPageValue) <= 0;
           final t = (index - currentPageValue);
-          final rotationY = lerpDouble(0, 30, t as double)!;
-          final maxOpacity = 0.8;
+          final rotationY = lerpDouble(0, 30, t)!;
           final num opacity =
               lerpDouble(0, maxOpacity, t.abs())!.clamp(0.0, maxOpacity);
           final isPaging = opacity != maxOpacity;
@@ -466,7 +469,6 @@ class _StoryWidgetState extends State<StoryWidget> {
             height: double.infinity,
           ),
         )),
-        // const SizedBox(width: 30),
         Expanded(
             child: GestureDetector(
           onTap: () => onChangeStoryIndex(_currentStoryIndex.value + 1),
