@@ -4,9 +4,7 @@ Implement the story like Facebook, Instagram
 
 🗾 Demo Image:
 
-<p float="left">
-  <img src="https://drive.google.com/file/d/1RTJO7EzT3kp-qQFGxovIWAGWlP55TaMU/view?usp=sharing" width=200 />
-</p>
+[!Demo image](asset/demo_image.png)
 
 🍟 Demo Video:
 
