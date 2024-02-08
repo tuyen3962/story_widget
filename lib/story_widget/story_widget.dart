@@ -101,7 +101,7 @@ class _StoryWidgetState extends State<StoryWidget> {
 
   late Timer? timer;
 
-  Timer? _longPressTimer = null;
+  Timer? _longPressTimer;
 
   int get desTimer => widget.slideImageDuration ?? IMAGE_DURATION;
 
@@ -112,7 +112,7 @@ class _StoryWidgetState extends State<StoryWidget> {
 
   List<StoryModel> get stories => listStories[_currentPageIndex.value].stories;
 
-  var currentPageValue;
+  late double currentPageValue = pageController.initialPage.toDouble();
 
   @override
   void dispose() {
@@ -133,16 +133,16 @@ class _StoryWidgetState extends State<StoryWidget> {
   @override
   void initState() {
     super.initState();
-    currentPageValue = pageController.initialPage.toDouble();
     listStories = widget.listStories;
 
     pageController.addListener(() => setState(() {
-          currentPageValue = pageController.page;
+          currentPageValue = pageController.page ?? 0;
         }));
     startCountTimer();
   }
 
   void onChangeStoryIndex(int index) async {
+    if (!mounted) return;
     if (stories.length == index) {
       final newPageIndex = _currentPageIndex.value + 1;
       if (newPageIndex >= listStories.length) {
@@ -212,8 +212,8 @@ class _StoryWidgetState extends State<StoryWidget> {
   }
 
   void startCountTimer() {
-    timer =
-        Timer.periodic(Duration(milliseconds: _DURATION_TIME), (timing) async {
+    timer = Timer.periodic(const Duration(milliseconds: _DURATION_TIME),
+        (timing) async {
       final story = stories[_currentStoryIndex.value];
       if (story.storyType == StoryImageType.Image) {
         final currentVal =
@@ -289,14 +289,14 @@ class _StoryWidgetState extends State<StoryWidget> {
   }
 
   void _onLongPressStart() {
-    if (!widget.isStopLongPress) return;
+    if (!widget.isStopLongPress || !mounted) return;
 
     _longPressTimer = Timer(const Duration(milliseconds: 300), () {
       if (widget.isHideWhenStop) {
         _isShowOtherView.value = false;
       }
       final story = stories[_currentStoryIndex.value];
-      if (story.storyType == StoryImageType.Video) {
+      if (story.storyType == StoryImageType.Video && mounted) {
         story.videoPlayer?.pause();
       }
       timer?.cancel();
@@ -307,6 +307,8 @@ class _StoryWidgetState extends State<StoryWidget> {
   }
 
   void _onLongPressEnd() {
+    if (!mounted) return;
+
     _longPressTimer?.cancel();
     _longPressTimer = null;
 
