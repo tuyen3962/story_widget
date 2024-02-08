@@ -18,6 +18,7 @@ class StoryListModel<A, B> {
 
 class StoryModel<A> {
   final A? data;
+  final String audioUrl;
   final String imageUrl;
   String thumbnailUrl;
   final StoryImageType storyType;
@@ -29,6 +30,7 @@ class StoryModel<A> {
 
   StoryModel(
       {this.data,
+      this.audioUrl = '',
       this.imageUrl = '',
       this.thumbnailUrl = '',
       this.storyType = StoryImageType.Image});

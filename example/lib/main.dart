@@ -20,10 +20,8 @@ class MainApp extends StatelessWidget {
               id: '',
               stories: [
                 StoryModel(
-                    imageUrl:
-                        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTb5z6MCCSYYRWCiVDmoNaRZ1qEwl6MlQCOzkSBJbdMlg&s',
-                    storyType: StoryImageType.Image),
-                StoryModel(
+                    audioUrl:
+                        'https://commondatastorage.googleapis.com/codeskulptor-assets/Evillaugh.ogg',
                     imageUrl:
                         'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTb5z6MCCSYYRWCiVDmoNaRZ1qEwl6MlQCOzkSBJbdMlg&s',
                     storyType: StoryImageType.Image),
@@ -31,6 +29,12 @@ class MainApp extends StatelessWidget {
                     imageUrl:
                         'https://firebasestorage.googleapis.com/v0/b/web-chat-709ef.appspot.com/o/robin_-_65801%20(540p).mp4?alt=media&token=225ea638-cda1-42a2-b8db-7fcd4d6e5ffd',
                     storyType: StoryImageType.Video),
+                StoryModel(
+                    audioUrl:
+                        'https://codeskulptor-demos.commondatastorage.googleapis.com/GalaxyInvaders/theme_01.mp3',
+                    imageUrl:
+                        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTb5z6MCCSYYRWCiVDmoNaRZ1qEwl6MlQCOzkSBJbdMlg&s',
+                    storyType: StoryImageType.Image),
                 StoryModel(
                     imageUrl:
                         'https://firebasestorage.googleapis.com/v0/b/web-chat-709ef.appspot.com/o/189018%20(540p).mp4?alt=media&token=e315974f-739a-4ad2-960e-a5ac8cdd7de7',

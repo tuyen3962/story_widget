@@ -6,9 +6,10 @@ import 'package:story_widget/story_widget/story_model.dart';
 import 'package:video_player/video_player.dart';
 
 class StoryVideoView extends StatelessWidget {
-  const StoryVideoView({required this.story, super.key});
+  const StoryVideoView({required this.story, this.defaultImage, super.key});
 
   final StoryModel story;
+  final Widget? defaultImage;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +34,10 @@ class StoryVideoView extends StatelessWidget {
                           imageUrl: story.thumbnailUrl,
                           width: double.infinity,
                           fit: BoxFit.contain,
+                          errorWidget: (context, url, error) =>
+                              defaultImage ?? const SizedBox(),
+                          placeholder: (context, url) =>
+                              defaultImage ?? const SizedBox(),
                         );
                       } else {
                         return Image.file(

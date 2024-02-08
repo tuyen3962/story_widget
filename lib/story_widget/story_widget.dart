@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:story_widget/story_widget/story_model.dart';
@@ -30,10 +31,12 @@ class StoryWidget<A, B> extends StatefulWidget {
     this.backgroundColor,
     this.isStopLongPress = true,
     this.isHideWhenStop = true,
+    this.initialPage = 0,
     this.fadeDuration,
+    this.defaultImage,
     this.bottomView,
     super.key,
-  });
+  }) : assert(initialPage >= 0 && initialPage < listStories.length);
 
   /// the list of stories user want to play
   final List<StoryListModel<A, B>> listStories;
@@ -55,6 +58,8 @@ class StoryWidget<A, B> extends StatefulWidget {
 
   /// the custom view in the bottom of video
   final Widget? bottomView;
+
+  final Widget? defaultImage;
 
   /// the padding of slider
   final EdgeInsets? topSliderPadding;
@@ -80,9 +85,12 @@ class StoryWidget<A, B> extends StatefulWidget {
   /// The event when the story board has finished
   final VoidCallback? onFinishStorySlide;
 
+  final int initialPage;
+
   /// return the current page for handling another action
   final void Function(int index, {A? page})? onPageChanged;
 
+  /// return the currnet story index of page
   final void Function(int index, {B? story})? onStoryChanged;
 
   @override
@@ -101,11 +109,16 @@ class _StoryWidgetState extends State<StoryWidget> {
 
   final _isShowOtherView = ValueNotifier(true);
 
+  late AudioPlayer audioPlayer = AudioPlayer();
+
   late Timer? timer;
 
   Timer? _longPressTimer;
 
-  int get desTimer => widget.slideImageDuration ?? IMAGE_DURATION;
+  int? audioDuration;
+
+  int get desTimer =>
+      audioDuration ?? widget.slideImageDuration ?? IMAGE_DURATION;
 
   Color get unactive =>
       widget.unactiveSliderColor ?? Colors.grey.withOpacity(0.5);
@@ -124,6 +137,7 @@ class _StoryWidgetState extends State<StoryWidget> {
     _currentSlideValue.dispose();
     timer?.cancel();
     _longPressTimer?.cancel();
+    audioPlayer.dispose();
     for (final list in listStories) {
       for (final story in list.stories) {
         story.dispose();
@@ -137,9 +151,23 @@ class _StoryWidgetState extends State<StoryWidget> {
     super.initState();
     listStories = widget.listStories;
 
-    pageController.addListener(() => setState(() {
-          currentPageValue = pageController.page ?? 0;
-        }));
+    pageController.addListener(
+        () => setState(() => currentPageValue = pageController.page ?? 0));
+    onInitView();
+  }
+
+  Future<void> onInitView() async {
+    _currentPageIndex.value = widget.initialPage;
+    if (stories.first.storyType == StoryImageType.Video) {
+      await stories.first.initialize();
+      stories.first.videoPlayer?.play();
+    }
+    if (stories.first.audioUrl.isNotEmpty) {
+      await audioPlayer.play(UrlSource(stories.first.audioUrl));
+      final duration = await audioPlayer.getDuration();
+      audioDuration = duration?.inMilliseconds ?? 0;
+    }
+
     startCountTimer();
   }
 
@@ -161,6 +189,10 @@ class _StoryWidgetState extends State<StoryWidget> {
       timer?.cancel();
       timer = null;
     }
+    if (audioPlayer.state == PlayerState.playing) {
+      await Future.wait([audioPlayer.stop(), audioPlayer.release()]);
+    }
+    audioDuration = null;
     if (index == -1) {
       final newPageIndex = _currentPageIndex.value - 1;
       if (newPageIndex >= 0) {
@@ -190,6 +222,11 @@ class _StoryWidgetState extends State<StoryWidget> {
         story.videoPlayer?.seekTo(Duration.zero);
       }
       story.videoPlayer?.play();
+    }
+    if (story.audioUrl.isNotEmpty) {
+      await audioPlayer.play(UrlSource(story.audioUrl));
+      final duration = await audioPlayer.getDuration();
+      audioDuration = duration?.inMilliseconds ?? 0;
     }
 
     startCountTimer();
@@ -411,7 +448,7 @@ class _StoryWidgetState extends State<StoryWidget> {
           final isLeaving = (index - currentPageValue) <= 0;
           final t = (index - currentPageValue);
           final rotationY = lerpDouble(0, 30, t)!;
-          final num opacity =
+          final opacity =
               lerpDouble(0, maxOpacity, t.abs())!.clamp(0.0, maxOpacity);
           final isPaging = opacity != maxOpacity;
           final transform = Matrix4.identity();
@@ -434,9 +471,14 @@ class _StoryWidgetState extends State<StoryWidget> {
                         imageUrl: story.imageUrl,
                         width: double.infinity,
                         fit: BoxFit.contain,
+                        errorWidget: (context, url, error) =>
+                            widget.defaultImage ?? const SizedBox(),
+                        placeholder: (context, url) =>
+                            widget.defaultImage ?? const SizedBox(),
                       );
                     } else {
-                      return StoryVideoView(story: story);
+                      return StoryVideoView(
+                          story: story, defaultImage: widget.defaultImage);
                     }
                   },
                 ),
@@ -445,7 +487,7 @@ class _StoryWidgetState extends State<StoryWidget> {
               if (isPaging && !isLeaving)
                 Positioned.fill(
                   child: Opacity(
-                    opacity: opacity as double,
+                    opacity: opacity,
                     child: const ColoredBox(
                       color: Colors.black87,
                     ),
